@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const session = verifyToken(authHeader);
 
   // Strictly return ONLY drafts belonging to this authenticated user
-  const drafts = db.getUserDrafts(session.userId);
+  const drafts = await db.getUserDrafts(session.userId);
   return NextResponse.json({ drafts });
 }
 
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { stateCode, phase } = parsed.data;
-    const draft = enumerationService.createDraft(session.userId, stateCode, phase);
+    const draft = await enumerationService.createDraft(session.userId, stateCode, phase);
 
     return NextResponse.json({
       success: true,

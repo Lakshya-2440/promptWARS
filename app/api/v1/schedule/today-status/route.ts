@@ -5,6 +5,6 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const stateCode = searchParams.get("stateCode") || undefined;
 
-  const status = scheduleService.getTodayStatus(stateCode);
+  const status = await scheduleService.getTodayStatus(stateCode);
   return NextResponse.json(status);
 }

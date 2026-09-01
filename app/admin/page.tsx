@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 export default function AdminPage() {
-  const { addToast } = useApp();
+  const { addToast, session, setAuthModalOpen } = useApp();
 
   const [activeTab, setActiveTab] = useState<"schedule" | "faq" | "audit" | "metrics">("schedule");
   const [states, setStates] = useState<StateData[]>([]);
@@ -39,12 +39,16 @@ export default function AdminPage() {
   // Telemetry & Logs
   const [metrics, setMetrics] = useState<any>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const isAdmin = session?.role === "admin";
 
   useEffect(() => {
     fetchStates();
     fetchMetrics();
-    fetchAuditLogs();
   }, []);
+
+  useEffect(() => {
+    fetchAuditLogs();
+  }, [session?.token]);
 
   const fetchStates = async () => {
     try {
@@ -69,8 +73,9 @@ export default function AdminPage() {
 
   const fetchAuditLogs = async () => {
     try {
+      if (!session?.token) return;
       const res = await fetch("/api/v1/admin/audit-logs", {
-        headers: { "x-admin-key": "admin_census2027_master_key" },
+        headers: { Authorization: `Bearer ${session.token}` },
       });
       const data = await res.json();
       setAuditLogs(data.auditLogs || []);
@@ -85,13 +90,17 @@ export default function AdminPage() {
 
   const handleUpdateSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      addToast("Admin session required to update schedules.", "warning");
+      return;
+    }
     setIsSaving(true);
     try {
       const res = await fetch(`/api/v1/schedule/states/${selectedStateCode}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "x-admin-key": "admin_census2027_master_key",
+          ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}),
         },
         body: JSON.stringify(scheduleForm),
       });
@@ -114,13 +123,17 @@ export default function AdminPage() {
       addToast("Question and Answer are required.", "warning");
       return;
     }
+    if (!isAdmin) {
+      addToast("Admin session required to add FAQ knowledge.", "warning");
+      return;
+    }
 
     try {
       const res = await fetch("/api/v1/admin/faq", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-admin-key": "admin_census2027_master_key",
+          ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}),
         },
         body: JSON.stringify({
           ...newFaq,
@@ -160,6 +173,21 @@ export default function AdminPage() {
           Verify that state schedules and RAG FAQs are configurable data stores, not hardcoded HTML. Update dates in real-time and observe instant updates across the app.
         </p>
       </div>
+
+      {!isAdmin && (
+        <div className="max-w-xl mx-auto mb-8 rounded-2xl border border-saffron-500/30 bg-navy-900/80 p-5 text-center">
+          <p className="text-sm text-slate-200 mb-4">
+            Admin session required for schedule edits, FAQ writes, and audit log access.
+          </p>
+          <button
+            type="button"
+            onClick={() => setAuthModalOpen(true)}
+            className="px-4 py-2 rounded-xl bg-saffron-500 text-navy-950 text-sm font-black hover:bg-saffron-400 transition-colors"
+          >
+            Sign In as Admin
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex justify-center mb-8">
@@ -344,8 +372,8 @@ export default function AdminPage() {
             <div className="pt-3">
               <button
                 type="submit"
-                disabled={isSaving}
-                className="w-full py-3 px-4 rounded-xl bg-saffron-500 hover:bg-saffron-400 text-navy-950 font-black text-xs shadow-md transition-colors flex items-center justify-center gap-2"
+                disabled={isSaving || !isAdmin}
+                className="w-full py-3 px-4 rounded-xl bg-saffron-500 hover:bg-saffron-400 disabled:opacity-50 disabled:hover:bg-saffron-500 text-navy-950 font-black text-xs shadow-md transition-colors flex items-center justify-center gap-2"
               >
                 <Save className="w-4 h-4" />
                 {isSaving ? "Saving to Database..." : `Save Schedule Updates for ${scheduleForm.name}`}
@@ -421,7 +449,8 @@ export default function AdminPage() {
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-navy-950 font-black text-xs shadow-md transition-colors"
+              disabled={!isAdmin}
+              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:hover:bg-emerald-500 text-navy-950 font-black text-xs shadow-md transition-colors"
             >
               Add FAQ Chunk to AI Knowledge Base
             </button>
@@ -493,6 +522,7 @@ export default function AdminPage() {
             </div>
             <button
               onClick={fetchAuditLogs}
+              disabled={!isAdmin}
               className="p-1.5 rounded-lg bg-navy-950 text-slate-400 hover:text-white"
               title="Refresh logs"
             >

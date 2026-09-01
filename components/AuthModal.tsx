@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { useApp } from "@/lib/context/AppContext";
 import { X, ShieldCheck, Smartphone, KeyRound, Sparkles, CheckCircle2 } from "lucide-react";
 
+const isSandboxDemo = process.env.NODE_ENV !== "production";
+
 export function AuthModal() {
   const { isAuthModalOpen, setAuthModalOpen, login, addToast } = useApp();
 
@@ -32,9 +34,13 @@ export function AuthModal() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to send OTP");
 
-      setDemoCode(data.demoOtp || "123456");
+      const receivedDemoCode = typeof data.demoOtp === "string" ? data.demoOtp : null;
+      setDemoCode(receivedDemoCode);
       setStep("otp");
-      addToast("OTP sent to mobile number. (Sandbox code provided)", "success");
+      addToast(
+        receivedDemoCode ? "OTP sent. Sandbox code provided." : "OTP sent to mobile number.",
+        "success",
+      );
     } catch (err: any) {
       addToast(err.message || "Failed to send OTP.", "error");
     } finally {
@@ -69,6 +75,7 @@ export function AuthModal() {
   };
 
   const fillSandboxDemo = () => {
+    if (!isSandboxDemo) return;
     setPhone("9876543210");
     setOtp("123456");
     setStep("otp");
@@ -103,15 +110,16 @@ export function AuthModal() {
           </div>
         </div>
 
-        {/* Demo Fast-Track Button */}
-        <button
-          type="button"
-          onClick={fillSandboxDemo}
-          className="w-full mb-4 py-2 px-3 rounded-xl bg-gradient-to-r from-saffron-500/20 to-amber-500/20 border border-saffron-500/40 text-saffron-300 hover:bg-saffron-500/30 text-xs font-bold flex items-center justify-center gap-2 transition-colors"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-saffron-400" />
-          Auto-Fill Sandbox Demo Credentials (9876543210 / 123456)
-        </button>
+        {isSandboxDemo && (
+          <button
+            type="button"
+            onClick={fillSandboxDemo}
+            className="w-full mb-4 py-2 px-3 rounded-xl bg-gradient-to-r from-saffron-500/20 to-amber-500/20 border border-saffron-500/40 text-saffron-300 hover:bg-saffron-500/30 text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-saffron-400" />
+            Auto-Fill Sandbox Demo Credentials (9876543210 / 123456)
+          </button>
+        )}
 
         {step === "phone" ? (
           <form onSubmit={handleRequestOtp} className="space-y-4">
@@ -177,7 +185,7 @@ export function AuthModal() {
                   maxLength={6}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  placeholder="123456"
+                  placeholder="Enter code"
                   className="w-full bg-transparent text-sm text-white focus:outline-none placeholder:text-slate-600 font-mono tracking-widest"
                   required
                 />

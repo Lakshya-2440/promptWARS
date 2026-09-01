@@ -34,7 +34,7 @@ export const enumerationService = {
     };
   },
 
-  createDraft(userId: string, stateCode: string, phase: 1 | 2 = 1): EnumerationDraft {
+  async createDraft(userId: string, stateCode: string, phase: 1 | 2 = 1): Promise<EnumerationDraft> {
     const draftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const newDraft: EnumerationDraft = {
       id: draftId,
@@ -47,16 +47,16 @@ export const enumerationService = {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    db.saveDraft(newDraft);
-    db.addAuditLog(userId, "CREATE_DRAFT", `draft:${draftId}`);
+    await db.saveDraft(newDraft);
+    await db.addAuditLog(userId, "CREATE_DRAFT", `draft:${draftId}`);
     return newDraft;
   },
 
   /**
    * Enforces zero-trust ownership: caller must own draft
    */
-  getDraft(id: string, userId: string, clientIp: string = "127.0.0.1"): EnumerationDraft | null {
-    const draft = db.getDraft(id);
+  async getDraft(id: string, userId: string, clientIp: string = "127.0.0.1"): Promise<EnumerationDraft | null> {
+    const draft = await db.getDraft(id);
     if (!draft) return null;
 
     if (draft.userId !== userId) {
@@ -76,14 +76,14 @@ export const enumerationService = {
   /**
    * Enforces zero-trust ownership: caller must own draft
    */
-  patchDraft(
+  async patchDraft(
     id: string,
     userId: string,
     step: number,
     partialPayload: Record<string, any>,
     clientIp: string = "127.0.0.1"
-  ): EnumerationDraft | null {
-    const draft = db.getDraft(id);
+  ): Promise<EnumerationDraft | null> {
+    const draft = await db.getDraft(id);
     if (!draft) return null;
 
     if (draft.userId !== userId) {
@@ -101,15 +101,15 @@ export const enumerationService = {
     draft.payload = { ...draft.payload, ...partialPayload };
     draft.updatedAt = new Date().toISOString();
 
-    db.saveDraft(draft);
+    await db.saveDraft(draft);
     return draft;
   },
 
   /**
    * Enforces zero-trust ownership: caller must own draft
    */
-  deleteDraft(id: string, userId: string, clientIp: string = "127.0.0.1"): boolean {
-    const draft = db.getDraft(id);
+  async deleteDraft(id: string, userId: string, clientIp: string = "127.0.0.1"): Promise<boolean> {
+    const draft = await db.getDraft(id);
     if (!draft) return false;
 
     if (draft.userId !== userId) {
@@ -129,12 +129,12 @@ export const enumerationService = {
   /**
    * Enforces zero-trust ownership: caller must own draft
    */
-  submitDraft(
+  async submitDraft(
     id: string,
     userId: string,
     clientIp: string = "127.0.0.1"
-  ): { draft: EnumerationDraft; practiceReferenceId: string; summary: any } | null {
-    const draft = db.getDraft(id);
+  ): Promise<{ draft: EnumerationDraft; practiceReferenceId: string; summary: any } | null> {
+    const draft = await db.getDraft(id);
     if (!draft) return null;
 
     if (draft.userId !== userId) {
@@ -157,8 +157,8 @@ export const enumerationService = {
     draft.submittedAt = new Date().toISOString();
     draft.updatedAt = new Date().toISOString();
 
-    db.saveDraft(draft);
-    db.addAuditLog(userId, "SUBMIT_PRACTICE_SELF_ENUMERATION", `draft:${id}`, `ref:${practiceReferenceId}`);
+    await db.saveDraft(draft);
+    await db.addAuditLog(userId, "SUBMIT_PRACTICE_SELF_ENUMERATION", `draft:${id}`, `ref:${practiceReferenceId}`);
 
     return {
       draft,

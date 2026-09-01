@@ -2,10 +2,17 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { logSecurityEvent } from "../security/security-logger";
 
-const JWT_SECRET = process.env.JWT_SECRET || "jan_ganana_ai_secure_census_2027_jwt_secret_key_998877";
-const SALT = process.env.PHONE_HASH_SALT || "census_2027_dpdp_salt_v1";
 const IS_PROD = process.env.NODE_ENV === "production";
-const ALLOW_DEMO_OTP = process.env.ALLOW_DEMO_OTP === "true" || !IS_PROD;
+const JWT_SECRET = process.env.JWT_SECRET || (IS_PROD ? "" : "jan_ganana_ai_dev_jwt_secret_key");
+const SALT = process.env.PHONE_HASH_SALT || (IS_PROD ? "" : "census_2027_dev_salt");
+const ALLOW_DEMO_OTP = !IS_PROD && process.env.ALLOW_DEMO_OTP !== "false";
+
+function requireSecret(value: string, key: string): string {
+  if (!value) {
+    throw new Error(`${key} must be configured in production.`);
+  }
+  return value;
+}
 
 interface OtpEntry {
   otp: string;
@@ -30,7 +37,8 @@ export interface AuthSession {
 
 export function hashPhone(phone: string): string {
   const cleanPhone = phone.replace(/\D/g, "");
-  return crypto.createHmac("sha256", SALT).update(cleanPhone).digest("hex");
+  const salt = requireSecret(SALT, "PHONE_HASH_SALT");
+  return crypto.createHmac("sha256", salt).update(cleanPhone).digest("hex");
 }
 
 export function requestOtp(phone: string, clientIp: string = "127.0.0.1"): { success: boolean; message: string; demoOtp?: string } {
@@ -137,7 +145,7 @@ export function verifyOtp(phone: string, otp: string, clientIp: string = "127.0.
       phoneHash,
       role,
     },
-    JWT_SECRET,
+    requireSecret(JWT_SECRET, "JWT_SECRET"),
     { expiresIn: "24h" } // Enforce 24 hour session expiration
   );
 
@@ -162,7 +170,7 @@ export function requireAuth(authHeader?: string | null): AuthSession {
 
   const token = authHeader.replace("Bearer ", "").trim();
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, requireSecret(JWT_SECRET, "JWT_SECRET")) as any;
     return {
       userId: decoded.sub,
       phoneHash: decoded.phoneHash,
@@ -194,7 +202,7 @@ export function verifyToken(authHeader?: string | null): AuthSession {
 
   const token = authHeader.replace("Bearer ", "").trim();
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, requireSecret(JWT_SECRET, "JWT_SECRET")) as any;
     return {
       userId: decoded.sub,
       phoneHash: decoded.phoneHash,

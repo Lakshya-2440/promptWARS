@@ -11,7 +11,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   const session = verifyToken(authHeader);
 
   try {
-    const result = enumerationService.submitDraft(id, session.userId, ip);
+    const result = await enumerationService.submitDraft(id, session.userId, ip);
     if (!result) {
       return NextResponse.json({ error: "Draft not found." }, { status: 404 });
     }

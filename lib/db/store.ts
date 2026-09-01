@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { ALL_STATES, FAQ_KNOWLEDGE_BASE, MYTHS_AND_FACTS, HLO_31_QUESTIONS, StateData, FAQItem } from "./seed-data";
+import postgres from "postgres";
+import { ALL_STATES, FAQ_KNOWLEDGE_BASE, StateData, FAQItem } from "./seed-data";
 
 export interface EnumerationDraft {
   id: string;
@@ -46,9 +47,56 @@ export interface DbSchema {
 const DATA_DIR = path.join(process.cwd(), "data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 
-let memoryDb: DbSchema | null = null;
+function asJson(value: unknown): postgres.JSONValue {
+  return value as postgres.JSONValue;
+}
 
-function initializeDb(): DbSchema {
+let memoryDb: DbSchema | null = null;
+let sql: postgres.Sql | null = null;
+let postgresReady: Promise<void> | null = null;
+
+function getSql() {
+  if (!process.env.DATABASE_URL) return null;
+  if (!sql) {
+    sql = postgres(process.env.DATABASE_URL, { max: 3, prepare: false });
+  }
+  return sql;
+}
+
+async function ensurePostgres() {
+  const client = getSql();
+  if (!client) return;
+  if (!postgresReady) {
+    postgresReady = (async () => {
+      await client`create table if not exists states (code text primary key, data jsonb not null)`;
+      await client`create table if not exists drafts (id text primary key, user_id text not null, data jsonb not null, updated_at timestamptz not null default now())`;
+      await client`create index if not exists drafts_user_id_idx on drafts (user_id)`;
+      await client`create table if not exists faqs (id text primary key, data jsonb not null)`;
+      await client`create table if not exists consents (id text primary key, user_id text not null, data jsonb not null)`;
+      await client`create index if not exists consents_user_id_idx on consents (user_id)`;
+      await client`create table if not exists audit_logs (id text primary key, actor_id text not null, data jsonb not null, created_at timestamptz not null default now())`;
+      await client`create index if not exists audit_logs_created_at_idx on audit_logs (created_at desc)`;
+      await client`create table if not exists feedback (id text primary key, user_id text not null, data jsonb not null, created_at timestamptz not null default now())`;
+
+      const stateCount = await client`select count(*)::int as count from states`;
+      if (stateCount[0].count === 0) {
+        for (const state of ALL_STATES) {
+          await client`insert into states (code, data) values (${state.code}, ${client.json(asJson(state))})`;
+        }
+      }
+
+      const faqCount = await client`select count(*)::int as count from faqs`;
+      if (faqCount[0].count === 0) {
+        for (const faq of FAQ_KNOWLEDGE_BASE) {
+          await client`insert into faqs (id, data) values (${faq.id}, ${client.json(asJson(faq))})`;
+        }
+      }
+    })();
+  }
+  await postgresReady;
+}
+
+function initializeMemoryDb(): DbSchema {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
@@ -82,10 +130,10 @@ function initializeDb(): DbSchema {
         action: "DATABASE_INITIALIZED",
         resource: "db.json",
         timestamp: new Date().toISOString(),
-        details: "Pre-seeded 36 States/UTs, 40+ Grounded FAQs, Census 2011 stats."
-      }
+        details: "Pre-seeded 36 States/UTs, 40+ Grounded FAQs, Census 2011 stats.",
+      },
     ],
-    feedback: []
+    feedback: [],
   };
 
   try {
@@ -97,14 +145,14 @@ function initializeDb(): DbSchema {
   return freshDb;
 }
 
-function getDb(): DbSchema {
+function getMemoryDb(): DbSchema {
   if (!memoryDb) {
-    memoryDb = initializeDb();
+    memoryDb = initializeMemoryDb();
   }
   return memoryDb;
 }
 
-function saveDb(): void {
+function saveMemoryDb(): void {
   if (!memoryDb) return;
   try {
     if (!fs.existsSync(DATA_DIR)) {
@@ -117,134 +165,275 @@ function saveDb(): void {
 }
 
 export const db = {
-  // State Schedule CRUD
-  getStates(): StateData[] {
-    return getDb().states;
-  },
-  getState(code: string): StateData | undefined {
-    return getDb().states.find((s) => s.code.toUpperCase() === code.toUpperCase());
-  },
-  updateState(code: string, updates: Partial<StateData>): StateData | null {
-    const database = getDb();
-    const index = database.states.findIndex((s) => s.code.toUpperCase() === code.toUpperCase());
-    if (index === -1) return null;
-    database.states[index] = { ...database.states[index], ...updates };
-    saveDb();
-    this.addAuditLog("admin", "UPDATE_STATE_SCHEDULE", `state:${code}`, JSON.stringify(updates));
-    return database.states[index];
+  async getStates(): Promise<StateData[]> {
+    const client = getSql();
+    if (client) {
+      await ensurePostgres();
+      const rows = await client`select data from states order by code`;
+      return rows.map((row) => row.data as StateData);
+    }
+    return getMemoryDb().states;
   },
 
-  // Drafts CRUD
-  getDraft(id: string): EnumerationDraft | undefined {
-    return getDb().drafts.find((d) => d.id === id);
-  },
-  getUserDrafts(userId: string): EnumerationDraft[] {
-    return getDb().drafts.filter((d) => d.userId === userId);
-  },
-  saveDraft(draft: EnumerationDraft): EnumerationDraft {
-    const database = getDb();
-    const index = database.drafts.findIndex((d) => d.id === draft.id);
-    if (index >= 0) {
-      database.drafts[index] = { ...draft, updatedAt: new Date().toISOString() };
-    } else {
-      database.drafts.push(draft);
+  async getState(code: string): Promise<StateData | undefined> {
+    const client = getSql();
+    if (client) {
+      await ensurePostgres();
+      const rows = await client`select data from states where code = ${code.toUpperCase()} limit 1`;
+      return rows[0]?.data as StateData | undefined;
     }
-    saveDb();
-    return draft;
+    return getMemoryDb().states.find((s) => s.code.toUpperCase() === code.toUpperCase());
   },
-  deleteDraft(id: string, userId: string): boolean {
-    const database = getDb();
+
+  async updateState(code: string, updates: Partial<StateData>): Promise<StateData | null> {
+    const existing = await this.getState(code);
+    if (!existing) return null;
+    const updated = { ...existing, ...updates, code: existing.code };
+
+    const client = getSql();
+    if (client) {
+      await ensurePostgres();
+      await client`
+        insert into states (code, data)
+        values (${updated.code}, ${client.json(asJson(updated))})
+        on conflict (code) do update set data = excluded.data
+      `;
+    } else {
+      const database = getMemoryDb();
+      const index = database.states.findIndex((s) => s.code.toUpperCase() === code.toUpperCase());
+      database.states[index] = updated;
+      saveMemoryDb();
+    }
+
+    await this.addAuditLog("admin", "UPDATE_STATE_SCHEDULE", `state:${code}`, JSON.stringify(updates));
+    return updated;
+  },
+
+  async getDraft(id: string): Promise<EnumerationDraft | undefined> {
+    const client = getSql();
+    if (client) {
+      await ensurePostgres();
+      const rows = await client`select data from drafts where id = ${id} limit 1`;
+      return rows[0]?.data as EnumerationDraft | undefined;
+    }
+    return getMemoryDb().drafts.find((d) => d.id === id);
+  },
+
+  async getUserDrafts(userId: string): Promise<EnumerationDraft[]> {
+    const client = getSql();
+    if (client) {
+      await ensurePostgres();
+      const rows = await client`select data from drafts where user_id = ${userId} order by updated_at desc`;
+      return rows.map((row) => row.data as EnumerationDraft);
+    }
+    return getMemoryDb().drafts.filter((d) => d.userId === userId);
+  },
+
+  async saveDraft(draft: EnumerationDraft): Promise<EnumerationDraft> {
+    const updatedDraft = { ...draft, updatedAt: new Date().toISOString() };
+    const client = getSql();
+    if (client) {
+      await ensurePostgres();
+      await client`
+        insert into drafts (id, user_id, data, updated_at)
+        values (${updatedDraft.id}, ${updatedDraft.userId}, ${client.json(asJson(updatedDraft))}, ${updatedDraft.updatedAt})
+        on conflict (id) do update set user_id = excluded.user_id, data = excluded.data, updated_at = excluded.updated_at
+      `;
+      return updatedDraft;
+    }
+
+    const database = getMemoryDb();
+    const index = database.drafts.findIndex((d) => d.id === updatedDraft.id);
+    if (index >= 0) {
+      database.drafts[index] = updatedDraft;
+    } else {
+      database.drafts.push(updatedDraft);
+    }
+    saveMemoryDb();
+    return updatedDraft;
+  },
+
+  async deleteDraft(id: string, userId: string): Promise<boolean> {
+    const client = getSql();
+    if (client) {
+      await ensurePostgres();
+      const rows = await client`delete from drafts where id = ${id} and user_id = ${userId} returning id`;
+      const deleted = rows.length > 0;
+      if (deleted) await this.addAuditLog(userId, "DELETE_DRAFT", `draft:${id}`);
+      return deleted;
+    }
+
+    const database = getMemoryDb();
     const initialLen = database.drafts.length;
     database.drafts = database.drafts.filter((d) => !(d.id === id && d.userId === userId));
     const deleted = database.drafts.length < initialLen;
     if (deleted) {
-      saveDb();
-      this.addAuditLog(userId, "DELETE_DRAFT", `draft:${id}`);
+      saveMemoryDb();
+      await this.addAuditLog(userId, "DELETE_DRAFT", `draft:${id}`);
     }
     return deleted;
   },
-  eraseUserData(userId: string): { draftsErased: number; consentsErased: number } {
-    const database = getDb();
+
+  async eraseUserData(userId: string): Promise<{ draftsErased: number; consentsErased: number }> {
+    const client = getSql();
+    if (client) {
+      await ensurePostgres();
+      const draftRows = await client`delete from drafts where user_id = ${userId} returning id`;
+      const consentRows = await client`delete from consents where user_id = ${userId} returning id`;
+      await this.addAuditLog(userId, "DPDP_RIGHT_TO_ERASURE_EXECUTED", `user:${userId}`);
+      return { draftsErased: draftRows.length, consentsErased: consentRows.length };
+    }
+
+    const database = getMemoryDb();
     const initialDrafts = database.drafts.length;
     const initialConsents = database.consents.length;
     database.drafts = database.drafts.filter((d) => d.userId !== userId);
     database.consents = database.consents.filter((c) => c.userId !== userId);
     const draftsErased = initialDrafts - database.drafts.length;
     const consentsErased = initialConsents - database.consents.length;
-    saveDb();
-    this.addAuditLog(userId, "DPDP_RIGHT_TO_ERASURE_EXECUTED", `user:${userId}`);
+    saveMemoryDb();
+    await this.addAuditLog(userId, "DPDP_RIGHT_TO_ERASURE_EXECUTED", `user:${userId}`);
     return { draftsErased, consentsErased };
   },
 
-  // FAQs
-  getFaqs(): FAQItem[] {
-    return getDb().faqs;
+  async getFaqs(): Promise<FAQItem[]> {
+    const client = getSql();
+    if (client) {
+      await ensurePostgres();
+      const rows = await client`select data from faqs order by id`;
+      return rows.map((row) => row.data as FAQItem);
+    }
+    return getMemoryDb().faqs;
   },
-  addFaq(faq: Omit<FAQItem, "id">): FAQItem {
-    const database = getDb();
+
+  async addFaq(faq: Omit<FAQItem, "id"> | FAQItem): Promise<FAQItem> {
     const newFaq: FAQItem = {
       ...faq,
-      id: `faq-${Date.now()}`
+      id: "id" in faq && faq.id ? faq.id : `faq-${Date.now()}`,
     };
-    database.faqs.push(newFaq);
-    saveDb();
-    this.addAuditLog("admin", "ADD_FAQ", newFaq.id);
+
+    const client = getSql();
+    if (client) {
+      await ensurePostgres();
+      await client`
+        insert into faqs (id, data)
+        values (${newFaq.id}, ${client.json(asJson(newFaq))})
+        on conflict (id) do update set data = excluded.data
+      `;
+    } else {
+      getMemoryDb().faqs.push(newFaq);
+      saveMemoryDb();
+    }
+
+    await this.addAuditLog("admin", "ADD_FAQ", newFaq.id);
     return newFaq;
   },
 
-  // Consents (DPDP Act)
-  addConsent(consent: Omit<ConsentLog, "id" | "consentedAt">): ConsentLog {
-    const database = getDb();
+  async addConsent(consent: Omit<ConsentLog, "id" | "consentedAt">): Promise<ConsentLog> {
     const newConsent: ConsentLog = {
       ...consent,
       id: `consent-${Date.now()}`,
-      consentedAt: new Date().toISOString()
+      consentedAt: new Date().toISOString(),
     };
-    database.consents.push(newConsent);
-    saveDb();
+
+    const client = getSql();
+    if (client) {
+      await ensurePostgres();
+      await client`
+        insert into consents (id, user_id, data)
+        values (${newConsent.id}, ${newConsent.userId}, ${client.json(asJson(newConsent))})
+      `;
+      return newConsent;
+    }
+
+    getMemoryDb().consents.push(newConsent);
+    saveMemoryDb();
     return newConsent;
   },
-  getUserConsents(userId: string): ConsentLog[] {
-    return getDb().consents.filter((c) => c.userId === userId);
+
+  async getUserConsents(userId: string): Promise<ConsentLog[]> {
+    const client = getSql();
+    if (client) {
+      await ensurePostgres();
+      const rows = await client`select data from consents where user_id = ${userId}`;
+      return rows.map((row) => row.data as ConsentLog);
+    }
+    return getMemoryDb().consents.filter((c) => c.userId === userId);
   },
 
-  // Audit Logs
-  getAuditLogs(): AuditLogItem[] {
-    return getDb().auditLogs;
+  async getAuditLogs(): Promise<AuditLogItem[]> {
+    const client = getSql();
+    if (client) {
+      await ensurePostgres();
+      const rows = await client`select data from audit_logs order by created_at desc limit 500`;
+      return rows.map((row) => row.data as AuditLogItem);
+    }
+    return getMemoryDb().auditLogs;
   },
-  addAuditLog(actorId: string, action: string, resource: string, details?: string): void {
-    const database = getDb();
-    database.auditLogs.unshift({
+
+  async addAuditLog(actorId: string, action: string, resource: string, details?: string): Promise<void> {
+    const item: AuditLogItem = {
       id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       actorId,
       action,
       resource,
       timestamp: new Date().toISOString(),
-      details
-    });
+      details,
+    };
+
+    const client = getSql();
+    if (client) {
+      await ensurePostgres();
+      await client`
+        insert into audit_logs (id, actor_id, data, created_at)
+        values (${item.id}, ${actorId}, ${client.json(asJson(item))}, ${item.timestamp})
+      `;
+      return;
+    }
+
+    const database = getMemoryDb();
+    database.auditLogs.unshift(item);
     if (database.auditLogs.length > 500) {
       database.auditLogs = database.auditLogs.slice(0, 500);
     }
-    saveDb();
+    saveMemoryDb();
   },
 
-  // Feedback
-  addFeedback(userId: string, query: string, answer: string, rating: number): void {
-    const database = getDb();
-    database.feedback.push({
+  async addFeedback(userId: string, query: string, answer: string, rating: number): Promise<void> {
+    const item = {
       id: `fb-${Date.now()}`,
       userId,
       query,
       answer,
       rating,
       timestamp: new Date().toISOString(),
-    });
-    saveDb();
+    };
+
+    const client = getSql();
+    if (client) {
+      await ensurePostgres();
+      await client`
+        insert into feedback (id, user_id, data, created_at)
+        values (${item.id}, ${userId}, ${client.json(asJson(item))}, ${item.timestamp})
+      `;
+      return;
+    }
+
+    getMemoryDb().feedback.push(item);
+    saveMemoryDb();
   },
-  getFeedbackStats(): { total: number; averageRating: number } {
-    const fb = getDb().feedback;
+
+  async getFeedbackStats(): Promise<{ total: number; averageRating: number }> {
+    const client = getSql();
+    if (client) {
+      await ensurePostgres();
+      const rows = await client`select count(*)::int as total, coalesce(avg((data->>'rating')::numeric), 5)::float as average_rating from feedback`;
+      return { total: rows[0].total, averageRating: Number(rows[0].average_rating.toFixed(2)) };
+    }
+
+    const fb = getMemoryDb().feedback;
     if (fb.length === 0) return { total: 0, averageRating: 5.0 };
     const avg = fb.reduce((acc, curr) => acc + curr.rating, 0) / fb.length;
     return { total: fb.length, averageRating: parseFloat(avg.toFixed(2)) };
-  }
+  },
 };

@@ -44,8 +44,8 @@ export function computeStateStatus(state: StateData, customDate?: Date): { statu
 }
 
 export const scheduleService = {
-  getAllStates(): StateWithComputedStatus[] {
-    const states = db.getStates();
+  async getAllStates(): Promise<StateWithComputedStatus[]> {
+    const states = await db.getStates();
     return states.map((state) => {
       const computed = computeStateStatus(state);
       return {
@@ -55,8 +55,8 @@ export const scheduleService = {
     });
   },
 
-  getStateByCode(code: string): StateWithComputedStatus | null {
-    const state = db.getState(code);
+  async getStateByCode(code: string): Promise<StateWithComputedStatus | null> {
+    const state = await db.getState(code);
     if (!state) return null;
     return {
       ...state,
@@ -64,8 +64,8 @@ export const scheduleService = {
     };
   },
 
-  getTodayStatus(stateCode?: string) {
-    const allStates = this.getAllStates();
+  async getTodayStatus(stateCode?: string) {
+    const allStates = await this.getAllStates();
     const activeSelfEnum = allStates.filter((s) => s.status === "active_self_enum");
     const activeHlo = allStates.filter((s) => s.status === "active_hlo");
     const activePe = allStates.filter((s) => s.status === "active_pe");
@@ -95,7 +95,7 @@ export const scheduleService = {
     };
   },
 
-  updateStateSchedule(code: string, updates: Partial<StateData>): StateData | null {
+  async updateStateSchedule(code: string, updates: Partial<StateData>): Promise<StateData | null> {
     return db.updateState(code, updates);
   },
 };

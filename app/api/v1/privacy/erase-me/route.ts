@@ -9,7 +9,7 @@ export async function DELETE(req: NextRequest) {
   const session = verifyToken(authHeader);
 
   try {
-    const report = privacyService.eraseUserData(session.userId);
+    const report = await privacyService.eraseUserData(session.userId);
 
     logSecurityEvent({
       eventType: "DPDP_ERASURE_TRIGGERED",

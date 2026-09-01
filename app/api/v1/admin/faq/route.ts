@@ -3,6 +3,7 @@ import { db } from "@/lib/db/store";
 import { verifyToken } from "@/lib/services/auth-service";
 import { AdminAddFaqSchema } from "@/lib/security/validation-schemas";
 import { extractClientIp, logSecurityEvent } from "@/lib/security/security-logger";
+import { isAdminAuthorized } from "@/lib/security/admin-auth";
 
 export async function POST(req: NextRequest) {
   const ip = extractClientIp(req.headers);
@@ -10,8 +11,7 @@ export async function POST(req: NextRequest) {
   const adminSecret = req.headers.get("x-admin-key");
 
   const session = verifyToken(authHeader);
-  const isAuthorized =
-    session.role === "admin" || adminSecret === (process.env.ADMIN_SECRET_KEY || "admin_census2027_master_key");
+  const isAuthorized = isAdminAuthorized(session, adminSecret);
 
   if (!isAuthorized) {
     logSecurityEvent({
@@ -43,8 +43,8 @@ export async function POST(req: NextRequest) {
       keywords,
     };
 
-    db.addFaq(newFaq);
-    db.addAuditLog(session.userId, "ADD_RAG_FAQ_ITEM", `faq:${newFaq.id}`);
+    await db.addFaq(newFaq);
+    await db.addAuditLog(session.userId, "ADD_RAG_FAQ_ITEM", `faq:${newFaq.id}`);
 
     return NextResponse.json({
       success: true,

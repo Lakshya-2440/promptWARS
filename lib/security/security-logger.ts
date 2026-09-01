@@ -26,12 +26,14 @@ export function logSecurityEvent(event: SecurityEvent): void {
   const timestamp = new Date().toISOString();
 
   // Write to audit log store for governance & compliance
-  db.addAuditLog(
+  void db.addAuditLog(
     event.actorId || `ip:${ipHash}`,
     `[SECURITY] ${event.eventType}`,
     event.endpoint,
     `IP:${ipHash} | ${event.details || ""}`
-  );
+  ).catch((error) => {
+    console.warn("Failed to persist security audit event:", error);
+  });
 
   // Structured console logging for SIEM / observability
   if (process.env.NODE_ENV !== "test") {

@@ -9,11 +9,11 @@ async function runTests() {
 
   // Test 1: States & Schedule
   console.log("--- 1. Testing State Schedule Service ---");
-  const states = scheduleService.getAllStates();
+  const states = await scheduleService.getAllStates();
   console.log(`✅ Loaded ${states.length} States & Union Territories (Expect 36)`);
   if (states.length !== 36) throw new Error("States count mismatch");
 
-  const todayStatus = scheduleService.getTodayStatus("GA");
+  const todayStatus = await scheduleService.getTodayStatus("GA");
   console.log(`✅ Today Status generated: Reference Date = ${todayStatus.referenceDate}`);
   console.log(`   Snow-bound regions count: ${todayStatus.counts.snowBoundCount}`);
 
@@ -47,15 +47,15 @@ async function runTests() {
 
   // Test 4: DPDP Privacy Service
   console.log("\n--- 4. Testing DPDP Act 2023 Privacy Service ---");
-  const draft = enumerationService.createDraft("test_citizen_user", "MH", 1);
+  const draft = await enumerationService.createDraft("test_citizen_user", "MH", 1);
   console.log(`✅ Created test draft: ${draft.id}`);
-  const submitRes = enumerationService.submitDraft(draft.id, "test_citizen_user");
+  const submitRes = await enumerationService.submitDraft(draft.id, "test_citizen_user");
   console.log(`✅ Finalized practice submission: Mock Ref ID = ${submitRes.practiceReferenceId}`);
 
-  const myData = privacyService.getMyData("test_citizen_user");
+  const myData = await privacyService.getMyData("test_citizen_user");
   console.log(`✅ 'My Data' transparency view verified: ${myData.totalDraftsStored} draft(s) found`);
 
-  const eraseRes = privacyService.eraseUserData("test_citizen_user");
+  const eraseRes = await privacyService.eraseUserData("test_citizen_user");
   console.log(`✅ Right to Erasure executed: Erased ${eraseRes.draftsErased} draft(s)`);
 
   console.log("\n🎉 ALL BACKEND LOGIC AND SAFETY TESTS PASSED WITH 100% SUCCESS!\n");

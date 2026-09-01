@@ -18,7 +18,7 @@ export const privacyService = {
     };
   },
 
-  recordConsent(userId: string, ipHash: string, purposes: string[] = ["census_awareness_and_practice"]) {
+  async recordConsent(userId: string, ipHash: string, purposes: string[] = ["census_awareness_and_practice"]) {
     return db.addConsent({
       userId,
       policyVersion: "2027.1.0-DPDP",
@@ -27,9 +27,9 @@ export const privacyService = {
     });
   },
 
-  getMyData(userId: string) {
-    const drafts = db.getUserDrafts(userId);
-    const consents = db.getUserConsents(userId);
+  async getMyData(userId: string) {
+    const drafts = await db.getUserDrafts(userId);
+    const consents = await db.getUserConsents(userId);
 
     return {
       userId,
@@ -57,7 +57,7 @@ export const privacyService = {
     };
   },
 
-  eraseUserData(userId: string) {
+  async eraseUserData(userId: string) {
     return db.eraseUserData(userId);
   },
 };

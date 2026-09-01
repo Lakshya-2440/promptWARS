@@ -24,6 +24,7 @@ function assert(condition: boolean, testName: string) {
   }
 }
 
+async function main() {
 // 1. IDOR Ownership Verification Tests
 console.log("--- 1. IDOR Ownership Verification Tests ---");
 requestOtp("9876543210", "10.0.0.1");
@@ -32,17 +33,17 @@ const user1Token = verifyOtp("9876543210", "123456", "10.0.0.1");
 requestOtp("9876543211", "10.0.0.2");
 const user2Token = verifyOtp("9876543211", "123456", "10.0.0.2");
 
-const user1Draft = enumerationService.createDraft(user1Token.userId, "GA", 1);
+const user1Draft = await enumerationService.createDraft(user1Token.userId, "GA", 1);
 assert(user1Draft.userId === user1Token.userId, "Draft created with User 1 as owner");
 
 // User 1 reads their own draft -> Success
-const readOwn = enumerationService.getDraft(user1Draft.id, user1Token.userId);
+const readOwn = await enumerationService.getDraft(user1Draft.id, user1Token.userId);
 assert(readOwn?.id === user1Draft.id, "Owner (User 1) can read their own draft");
 
 // User 2 attempts to read User 1's draft -> Blocked
 let user2ReadBlocked = false;
 try {
-  enumerationService.getDraft(user1Draft.id, user2Token.userId, "10.0.0.2");
+  await enumerationService.getDraft(user1Draft.id, user2Token.userId, "10.0.0.2");
 } catch (e: any) {
   if (e instanceof IdorSecurityError) {
     user2ReadBlocked = true;
@@ -53,7 +54,7 @@ assert(user2ReadBlocked, "IDOR Blocked: User 2 cannot read User 1 draft (throws 
 // User 2 attempts to patch User 1's draft -> Blocked
 let user2PatchBlocked = false;
 try {
-  enumerationService.patchDraft(user1Draft.id, user2Token.userId, 2, { dwellingRooms: 10 }, "10.0.0.2");
+  await enumerationService.patchDraft(user1Draft.id, user2Token.userId, 2, { dwellingRooms: 10 }, "10.0.0.2");
 } catch (e: any) {
   if (e instanceof IdorSecurityError) {
     user2PatchBlocked = true;
@@ -64,7 +65,7 @@ assert(user2PatchBlocked, "IDOR Blocked: User 2 cannot modify User 1 draft");
 // User 2 attempts to delete User 1's draft -> Blocked
 let user2DeleteBlocked = false;
 try {
-  enumerationService.deleteDraft(user1Draft.id, user2Token.userId, "10.0.0.2");
+  await enumerationService.deleteDraft(user1Draft.id, user2Token.userId, "10.0.0.2");
 } catch (e: any) {
   if (e instanceof IdorSecurityError) {
     user2DeleteBlocked = true;
@@ -75,7 +76,7 @@ assert(user2DeleteBlocked, "IDOR Blocked: User 2 cannot delete User 1 draft");
 // User 2 attempts to submit User 1's draft -> Blocked
 let user2SubmitBlocked = false;
 try {
-  enumerationService.submitDraft(user1Draft.id, user2Token.userId, "10.0.0.2");
+  await enumerationService.submitDraft(user1Draft.id, user2Token.userId, "10.0.0.2");
 } catch (e: any) {
   if (e instanceof IdorSecurityError) {
     user2SubmitBlocked = true;
@@ -161,3 +162,9 @@ if (failed > 0) {
 } else {
   process.exit(0);
 }
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

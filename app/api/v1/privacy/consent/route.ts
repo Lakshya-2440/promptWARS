@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { purposes } = parsed.data;
-    const consent = privacyService.recordConsent(session.userId, ip, purposes);
+    const consent = await privacyService.recordConsent(session.userId, ip, purposes);
 
     logSecurityEvent({
       eventType: "DPDP_CONSENT_RECORDED",

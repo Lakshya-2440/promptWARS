@@ -5,7 +5,7 @@ process.env.API_PROXY_TARGET = "https://backend.example.com";
 const { default: nextConfig } = await import("../next.config.mjs");
 
 const rewrites = await nextConfig.rewrites();
-assert.deepEqual(rewrites, [
+assert.deepEqual(rewrites.beforeFiles, [
   {
     source: "/api/v1/:path*",
     destination: "https://backend.example.com/api/v1/:path*",

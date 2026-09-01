@@ -3,10 +3,10 @@ import { db } from "@/lib/db/store";
 import { scheduleService } from "@/lib/services/schedule-service";
 
 export async function GET(req: NextRequest) {
-  const states = scheduleService.getAllStates();
-  const faqs = db.getFaqs();
-  const auditLogs = db.getAuditLogs();
-  const feedbackStats = db.getFeedbackStats();
+  const states = await scheduleService.getAllStates();
+  const faqs = await db.getFaqs();
+  const auditLogs = await db.getAuditLogs();
+  const feedbackStats = await db.getFeedbackStats();
 
   return NextResponse.json({
     timestamp: new Date().toISOString(),

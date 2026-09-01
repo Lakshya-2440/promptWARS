@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     const { message, category, rating } = parsed.data;
 
-    db.addFeedback(session.userId, message, category, rating);
+    await db.addFeedback(session.userId, message, category, rating);
 
     return NextResponse.json({
       success: true,

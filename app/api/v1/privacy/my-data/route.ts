@@ -6,6 +6,6 @@ export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const session = verifyToken(authHeader);
 
-  const myData = privacyService.getMyData(session.userId);
+  const myData = await privacyService.getMyData(session.userId);
   return NextResponse.json(myData);
 }

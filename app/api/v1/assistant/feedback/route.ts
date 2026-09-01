@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { query = "", answer = "", rating = 5 } = body;
 
-    db.addFeedback(session.userId, query, answer, Number(rating));
+    await db.addFeedback(session.userId, query, answer, Number(rating));
 
     return NextResponse.json({
       success: true,

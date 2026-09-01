@@ -4,11 +4,12 @@ import { verifyToken } from "@/lib/services/auth-service";
 import { checkRateLimit } from "@/lib/security/rate-limiter";
 import { AdminUpdateStateSchema, VALID_STATE_CODES } from "@/lib/security/validation-schemas";
 import { extractClientIp, logSecurityEvent } from "@/lib/security/security-logger";
+import { isAdminAuthorized } from "@/lib/security/admin-auth";
 
 export async function GET(req: NextRequest, props: { params: Promise<{ stateCode: string }> }) {
   const params = await props.params;
   const { stateCode } = params;
-  const state = scheduleService.getStateByCode(stateCode);
+  const state = await scheduleService.getStateByCode(stateCode);
 
   if (!state) {
     return NextResponse.json({ error: `State with code '${stateCode}' not found.` }, { status: 404 });
@@ -39,8 +40,7 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ stateCode
 
   // Strict Admin Authorization
   const session = verifyToken(authHeader);
-  const isAuthorized =
-    session.role === "admin" || adminSecret === (process.env.ADMIN_SECRET_KEY || "admin_census2027_master_key");
+  const isAuthorized = isAdminAuthorized(session, adminSecret);
 
   if (!isAuthorized) {
     logSecurityEvent({
@@ -61,7 +61,7 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ stateCode
       return NextResponse.json({ error: parsed.error.issues[0]?.message || "Invalid schedule data format." }, { status: 400 });
     }
 
-    const updated = scheduleService.updateStateSchedule(upperCode, parsed.data);
+    const updated = await scheduleService.updateStateSchedule(upperCode, parsed.data);
 
     if (!updated) {
       return NextResponse.json({ error: `State with code '${upperCode}' not found.` }, { status: 404 });

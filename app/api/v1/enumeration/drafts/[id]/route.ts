@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
   const session = verifyToken(authHeader);
 
   try {
-    const draft = enumerationService.getDraft(id, session.userId, ip);
+    const draft = await enumerationService.getDraft(id, session.userId, ip);
     if (!draft) {
       return NextResponse.json({ error: "Draft not found." }, { status: 404 });
     }
@@ -56,7 +56,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 
     const { step, payload } = parsed.data;
 
-    const updated = enumerationService.patchDraft(id, session.userId, step, payload, ip);
+    const updated = await enumerationService.patchDraft(id, session.userId, step, payload, ip);
     if (!updated) {
       return NextResponse.json({ error: "Draft not found." }, { status: 404 });
     }
@@ -85,7 +85,7 @@ export async function DELETE(req: NextRequest, props: { params: Promise<{ id: st
   const session = verifyToken(authHeader);
 
   try {
-    const deleted = enumerationService.deleteDraft(id, session.userId, ip);
+    const deleted = await enumerationService.deleteDraft(id, session.userId, ip);
     if (!deleted) {
       return NextResponse.json({ error: "Draft not found." }, { status: 404 });
     }

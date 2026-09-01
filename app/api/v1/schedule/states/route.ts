@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   const snowBound = searchParams.get("snowBound");
   const status = searchParams.get("status");
 
-  let states = scheduleService.getAllStates();
+  let states = await scheduleService.getAllStates();
 
   if (zone) {
     states = states.filter((s) => s.zone.toLowerCase() === zone.toLowerCase());

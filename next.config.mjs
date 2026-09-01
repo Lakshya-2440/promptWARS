@@ -7,15 +7,17 @@ const nextConfig = {
 
   async rewrites() {
     if (!apiProxyTarget) {
-      return [];
+      return { beforeFiles: [] };
     }
 
-    return [
-      {
-        source: "/api/v1/:path*",
-        destination: `${apiProxyTarget}/api/v1/:path*`,
-      },
-    ];
+    return {
+      beforeFiles: [
+        {
+          source: "/api/v1/:path*",
+          destination: `${apiProxyTarget}/api/v1/:path*`,
+        },
+      ],
+    };
   },
   
   async headers() {
