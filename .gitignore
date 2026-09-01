@@ -1,0 +1,29 @@
+.DS_Store
+
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Build and caches
+dist/
+coverage/
+*.tsbuildinfo
+
+# Env files and local secrets
+.env
+.env*.local
+
+# Local JSON store; production service creates its own runtime copy
+data/db.json
+
+# Vercel local project metadata
+.vercel/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
