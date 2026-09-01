@@ -4,8 +4,9 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useApp } from "@/lib/context/AppContext";
 import { ALL_STATES } from "@/lib/db/seed-data";
-import { computeStateStatus } from "@/lib/services/schedule-service";
+import { computeStateStatus } from "@/lib/services/schedule-status";
 import { useGeminiTranslation } from "@/lib/hooks/useGeminiTranslation";
+import { TodayStatusResponse, QuickVerifyResult } from "@/types/census";
 import {
   Sparkles,
   Layers,
@@ -74,8 +75,6 @@ const HOME_FAQ_ENGLISH = {
   faq4A: "In Phase II (Population Enumeration), the census includes comprehensive caste enumeration for the first time since 1931, alongside Scheduled Castes (SC) and Scheduled Tribes (ST) data, to facilitate evidence-based social justice policies.",
   moreQuestions: "Have more questions? Ask Jan Ganana Sathi AI",
 };
-
-import { TodayStatusResponse, QuickVerifyResult } from "@/types/census";
 
 export default function HomePage() {
   const {

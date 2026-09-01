@@ -3,7 +3,7 @@
  * Digital Census 2027 (Jan Ganana AI)
  */
 
-import { StateWithComputedStatus } from "@/lib/services/schedule-service";
+import { StateWithComputedStatus } from "@/lib/services/schedule-status";
 import { AuditLogItem, EnumerationDraft } from "@/lib/db/store";
 
 export type IndianStateCode =

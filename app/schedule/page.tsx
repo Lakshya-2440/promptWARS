@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useApp } from "@/lib/context/AppContext";
-import { StateWithComputedStatus } from "@/lib/services/schedule-service";
+import { StateWithComputedStatus } from "@/lib/services/schedule-status";
 import {
   Calendar,
   Search,

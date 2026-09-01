@@ -18,7 +18,7 @@ import {
   Activity
 } from "lucide-react";
 import { AdminMetricsResponse, AdminAuditLogItem } from "@/types/census";
-import { StateWithComputedStatus } from "@/lib/services/schedule-service";
+import { StateWithComputedStatus } from "@/lib/services/schedule-status";
 
 export default function AdminPage() {
   const { addToast, session, setAuthModalOpen } = useApp();
@@ -30,8 +30,14 @@ export default function AdminPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   // FAQ Form
-  const [newFaq, setNewFaq] = useState({
-    category: "General" as any,
+  const [newFaq, setNewFaq] = useState<{
+    category: FAQItem["category"];
+    question: string;
+    answer: string;
+    legalReference: string;
+    keywords: string;
+  }>({
+    category: "General",
     question: "",
     answer: "",
     legalReference: "Census Act 1948 / ORGI Notification 2026",

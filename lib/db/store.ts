@@ -164,7 +164,14 @@ function saveMemoryDb(): void {
   }
 }
 
+/**
+ * Unified persistence interface supporting Postgres (with JSONB document modeling)
+ * and auto-migrating local JSON file fallback for offline/development execution.
+ */
 export const db = {
+  /**
+   * Retrieves all 36 Indian States & UT records.
+   */
   async getStates(): Promise<StateData[]> {
     const client = getSql();
     if (client) {
@@ -175,6 +182,9 @@ export const db = {
     return getMemoryDb().states;
   },
 
+  /**
+   * Retrieves a single state record by 2-letter code.
+   */
   async getState(code: string): Promise<StateData | undefined> {
     const client = getSql();
     if (client) {

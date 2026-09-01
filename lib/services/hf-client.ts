@@ -353,14 +353,17 @@ export async function translateText(text: string, targetLangCode: string): Promi
 
   if (hf) {
     try {
-      const result = await hf.translation({
+      const result = (await hf.translation({
         model: "ai4bharat/indictrans2-en-indic-1B",
         inputs: text,
-        // @ts-ignore
-        parameters: { src_lang: "eng_Latn", tgt_lang: targetLangCode },
-      });
-      // @ts-ignore
-      const translation = result?.translation_text || text;
+        parameters: { src_lang: "eng_Latn", tgt_lang: targetLangCode } as Record<string, any>,
+      })) as { translation_text?: string } | Array<{ translation_text?: string }>;
+
+      const translationText = Array.isArray(result)
+        ? result[0]?.translation_text
+        : result?.translation_text;
+
+      const translation = translationText || text;
       translationCache.set(cacheKey, translation);
       return translation;
     } catch (e) {
