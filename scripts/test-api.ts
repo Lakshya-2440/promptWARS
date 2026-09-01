@@ -3,9 +3,11 @@ import { scheduleService } from "../lib/services/schedule-service";
 import { enumerationService } from "../lib/services/enumeration-service";
 import { classifyMisinformation } from "../lib/services/hf-client";
 import { privacyService } from "../lib/services/privacy-service";
+import { analyticsService, HISTORICAL_CENSUS_TRENDS } from "../lib/services/analytics-service";
+import { dynamicTranslateText, dynamicTranslateBatch } from "../lib/services/translation-engine";
 
 async function runTests() {
-  console.log("🚀 Starting Jan Ganana AI Backend Services Test Suite...\n");
+  console.log("🚀 Starting Jan Ganana AI Comprehensive Backend & AI Test Suite...\n");
 
   // Test 1: States & Schedule
   console.log("--- 1. Testing State Schedule Service ---");
@@ -21,7 +23,7 @@ async function runTests() {
   console.log("\n--- 2. Testing Scam / Misinformation Classifier ---");
   const scamMsg = "URGENT: Your Census 2027 registration is incomplete! Pay ₹50 fee immediately at bit.ly/census-pay or face fine.";
   const scamResult = await classifyMisinformation(scamMsg);
-  console.log(`   Test 2a: Scam message test -> Verdict: ${scamResult.verdict}, Red flags: ${scamResult.redFlags.length}`);
+  console.log(`   Test 2a: Scam message test -> Verdict: ${scamResult.verdict}, Red flags: ${scamResult.redFlags?.length || 0}`);
   if (!scamResult.isScam) throw new Error("Scam classifier failed on obvious fee/link scam");
 
   const genuineMsg = "Census 2027 Phase 1 House Listing will begin in Goa from April 16. Details at censusindia.gov.in";
@@ -58,7 +60,30 @@ async function runTests() {
   const eraseRes = await privacyService.eraseUserData("test_citizen_user");
   console.log(`✅ Right to Erasure executed: Erased ${eraseRes.draftsErased} draft(s)`);
 
-  console.log("\n🎉 ALL BACKEND LOGIC AND SAFETY TESTS PASSED WITH 100% SUCCESS!\n");
+  // Test 5: Demographic Trends & Household Comparison
+  console.log("\n--- 5. Testing Demographic Trends & Household Comparison ---");
+  console.log(`✅ Historical Census Datapoints: ${HISTORICAL_CENSUS_TRENDS.length} cycles (1951 - 2027)`);
+  const comparison = analyticsService.compareHouseholdWithAverages("DL", {
+    lightingSource: "electricity",
+    cookingFuel: "lpg_png",
+    waterSource: "tap_treated",
+    latrineAccess: "within_premises",
+    hasInternet: "yes"
+  });
+  console.log(`✅ Household comparison calculated for ${comparison.stateName}: ${comparison.metrics.length} metrics assessed`);
+  if (comparison.metrics.length < 5) throw new Error("Household comparison metrics incomplete");
+
+  // Test 6: Dynamic Multi-Language AI Translation
+  console.log("\n--- 6. Testing Dynamic Google Gemini AI Translation Engine ---");
+  const testDict = {
+    appName: "Jan Ganana AI",
+    practiceNotice: "100% Free Practice Simulation"
+  };
+  const translated = await dynamicTranslateBatch(testDict, "hi");
+  console.log(`✅ Hindi Batch Translation Source: [${translated.source}] (${translated.count} keys)`);
+  if (!translated.translations.appName) throw new Error("Batch translation failed to return keys");
+
+  console.log("\n🎉 ALL 6 PRODUCTION TEST SUITES PASSED WITH 100% SUCCESS!\n");
 }
 
 runTests().catch((e) => {

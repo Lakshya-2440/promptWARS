@@ -5,6 +5,7 @@ import confetti from "canvas-confetti";
 import { useApp } from "@/lib/context/AppContext";
 import { ALL_STATES } from "@/lib/db/seed-data";
 import { useGeminiTranslation } from "@/lib/hooks/useGeminiTranslation";
+import { InconsistencyWarning, PracticeSubmissionResult } from "@/types/census";
 import {
   FileCheck,
   Sparkles,
@@ -103,77 +104,70 @@ export default function WizardPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
   const [activeQuestionHelp, setActiveQuestionHelp] = useState<string | null>(null);
 
   // Form State
-  const [formData, setFormData] = useState({
-    // Step 1: Location & Household
+  const [formData, setFormData] = useState<Record<string, string | number>>({
     stateCode: selectedStateCode || "GA",
-    district: "North Goa",
-    areaType: "urban",
-    buildingNumber: "B-104",
-    censusHouseNumber: "Unit 2A",
-    headName: "Rajesh Sharma",
+    districtName: "North Goa",
+    buildingNumber: "B-402",
+    censusHouseNumber: "01",
+    headName: "Rajesh Kumar",
     headGender: "male",
-    headSocialCategory: "other",
-    totalPersons: 4,
-
-    // Step 2: Housing Characteristics
-    houseOwnership: "owned",
-    houseCondition: "good",
+    socialCategory: "Other",
+    mobileNumber: "9876543210",
     floorMaterial: "mosaic_tiles",
     wallMaterial: "burnt_brick",
     roofMaterial: "concrete_rcc",
+    houseUse: "residential",
+    houseCondition: "good",
+    householdTotalPersons: 4,
+    ownershipStatus: "owned",
     dwellingRooms: 3,
-    marriedCouples: 1,
-
-    // Step 3: Amenities & Sanitation
-    waterSource: "tap_treated",
+    marriedCouplesCount: 1,
+    drinkingWaterSource: "tap_treated",
     waterAvailability: "within_premises",
     lightingSource: "electricity",
-    latrineAccess: "within_premises",
-    latrineType: "sewer_system",
+    latrineFacility: "flush_piped",
     drainageType: "closed_drain",
-    bathingFacility: "bathroom_with_roof",
-    kitchenStatus: "cooking_inside_lpg",
+    bathingFacility: "attached_bathroom",
+    kitchenFacility: "cooking_inside_lpg",
     cookingFuel: "lpg_png",
-
-    // Step 4: Assets & Members
-    hasRadio: "no",
+    hasRadio: "yes",
     hasTv: "yes",
     hasInternet: "yes",
-    laptopStatus: "laptop_with_internet",
-    phoneStatus: "smartphone",
-    vehicles: ["scooter_bike", "car_van"],
-    cerealConsumed: "rice_wheat",
-    respondentMobile: "9876543210",
+    hasLaptop: "yes",
+    hasPhone: "yes",
+    hasVehicle: "four_wheeler",
+    casteSubCategory: "General",
   });
 
   const [members, setMembers] = useState<MemberRecord[]>([
     {
-      id: "m1",
-      name: "Rajesh Sharma",
+      id: "m-1",
+      name: "Rajesh Kumar",
       relation: "Head",
-      gender: "male",
+      gender: "Male",
       age: 42,
-      maritalStatus: "currently_married",
+      maritalStatus: "Currently Married",
       isLiterate: "yes",
       casteCategory: "General",
     },
     {
-      id: "m2",
-      name: "Sunita Sharma",
+      id: "m-2",
+      name: "Sunita Kumar",
       relation: "Spouse",
-      gender: "female",
+      gender: "Female",
       age: 39,
-      maritalStatus: "currently_married",
+      maritalStatus: "Currently Married",
       isLiterate: "yes",
       casteCategory: "General",
     },
   ]);
 
-  const [warnings, setWarnings] = useState<any[]>([]);
-  const [submissionResult, setSubmissionResult] = useState<any>(null);
+  const [warnings, setWarnings] = useState<InconsistencyWarning[]>([]);
+  const [submissionResult, setSubmissionResult] = useState<PracticeSubmissionResult | null>(null);
 
   // Initialize draft
   useEffect(() => {
@@ -316,18 +310,29 @@ export default function WizardPage() {
       });
 
       addToast("Practice Self-Enumeration finalized!", "success");
-    } catch (e) {
       // Demo fallback
       const randomSuffix = Math.floor(100000 + Math.random() * 900000);
       const mockId = `CEN27-${formData.stateCode}-${randomSuffix}`;
       setSubmissionResult({
+        success: true,
+        draft: {
+          id: draftId || "draft_local",
+          userId: session?.userId || "anon",
+          stateCode: String(formData.stateCode || "GA"),
+          phase: 1,
+          step: 5,
+          status: "submitted",
+          updatedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          payload: formData,
+        },
         practiceReferenceId: mockId,
         summary: {
-          referenceId: mockId,
-          stateCode: formData.stateCode,
-          headOfHousehold: formData.headName,
-          totalMembers: members.length,
-          submissionDate: new Date().toISOString(),
+          state: String(formData.stateCode || "GA"),
+          headOfHousehold: String(formData.headName || "Citizen"),
+          totalPersons: members.length,
+          dwellingRooms: Number(formData.dwellingRooms || 1),
+          submittedAt: new Date().toISOString(),
         },
       });
       setCurrentStep(5);

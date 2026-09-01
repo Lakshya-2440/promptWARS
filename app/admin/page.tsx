@@ -17,14 +17,16 @@ import {
   FileText,
   Activity
 } from "lucide-react";
+import { AdminMetricsResponse, AdminAuditLogItem } from "@/types/census";
+import { StateWithComputedStatus } from "@/lib/services/schedule-service";
 
 export default function AdminPage() {
   const { addToast, session, setAuthModalOpen } = useApp();
 
   const [activeTab, setActiveTab] = useState<"schedule" | "faq" | "audit" | "metrics">("schedule");
-  const [states, setStates] = useState<StateData[]>([]);
+  const [states, setStates] = useState<StateWithComputedStatus[]>([]);
   const [selectedStateCode, setSelectedStateCode] = useState<string>("GA");
-  const [scheduleForm, setScheduleForm] = useState<Partial<StateData>>({});
+  const [scheduleForm, setScheduleForm] = useState<Partial<StateWithComputedStatus>>({});
   const [isSaving, setIsSaving] = useState(false);
 
   // FAQ Form
@@ -37,8 +39,8 @@ export default function AdminPage() {
   });
 
   // Telemetry & Logs
-  const [metrics, setMetrics] = useState<any>(null);
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState<AdminMetricsResponse | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AdminAuditLogItem[]>([]);
   const isAdmin = session?.role === "admin";
 
   useEffect(() => {
@@ -56,7 +58,7 @@ export default function AdminPage() {
       const data = await res.json();
       setStates(data.states || []);
       if (data.states && data.states.length > 0) {
-        const ga = data.states.find((s: any) => s.code === "GA") || data.states[0];
+        const ga = data.states.find((s: StateWithComputedStatus) => s.code === "GA") || data.states[0];
         setSelectedStateCode(ga.code);
         setScheduleForm(ga);
       }

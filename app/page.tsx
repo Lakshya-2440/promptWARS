@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useApp } from "@/lib/context/AppContext";
 import { ALL_STATES } from "@/lib/db/seed-data";
+import { computeStateStatus } from "@/lib/services/schedule-service";
 import { useGeminiTranslation } from "@/lib/hooks/useGeminiTranslation";
 import {
   Sparkles,
@@ -74,6 +75,8 @@ const HOME_FAQ_ENGLISH = {
   moreQuestions: "Have more questions? Ask Jan Ganana Sathi AI",
 };
 
+import { TodayStatusResponse, QuickVerifyResult } from "@/types/census";
+
 export default function HomePage() {
   const {
     dict,
@@ -86,9 +89,9 @@ export default function HomePage() {
 
   const { data: ht } = useGeminiTranslation(HOME_PAGE_ENGLISH, "home_page");
   const { data: fq } = useGeminiTranslation(HOME_FAQ_ENGLISH, "home_faqs");
-  const [todayStatus, setTodayStatus] = useState<any>(null);
+  const [todayStatus, setTodayStatus] = useState<TodayStatusResponse | null>(null);
   const [quickVerifyText, setQuickVerifyText] = useState("");
-  const [quickVerifyResult, setQuickVerifyResult] = useState<any>(null);
+  const [quickVerifyResult, setQuickVerifyResult] = useState<QuickVerifyResult | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [activeFaqId, setActiveFaqId] = useState<string | null>("faq-01");
 
@@ -238,7 +241,7 @@ export default function HomePage() {
           <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span className="text-slate-300 font-semibold">{selectedState?.statusLabel}</span>
+              <span className="text-slate-300 font-semibold">{computeStateStatus(selectedState).statusLabel}</span>
             </div>
             <Link
               href="/schedule"

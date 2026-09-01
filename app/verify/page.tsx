@@ -21,12 +21,13 @@ import {
 } from "lucide-react";
 
 import { getLocalizedMyth } from "@/lib/i18n/content-translations";
+import { QuickVerifyResult } from "@/types/census";
 
 export default function VerifyPage() {
   const { addToast, openAssistantWithPrompt, dict, language } = useApp();
 
   const [messageText, setMessageText] = useState("");
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [analysisResult, setAnalysisResult] = useState<QuickVerifyResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedMythCat, setSelectedMythCat] = useState("all");
 

@@ -32,6 +32,8 @@ export const viewport: Viewport = {
   themeColor: "#0A1128",
 };
 
+import { SkipToContent } from "@/components/SkipToContent";
+
 export default function RootLayout({
   children,
 }: {
@@ -45,9 +47,12 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className="jaali-bg antialiased min-h-screen flex flex-col selection:bg-saffron-500 selection:text-navy-950">
+        <SkipToContent />
         <AppProvider>
           <Navbar />
-          <main className="flex-1 w-full">{children}</main>
+          <main id="main-content" tabIndex={-1} className="flex-1 w-full focus:outline-none">
+            {children}
+          </main>
           <Footer />
           <AiAssistantDrawer />
           <AuthModal />

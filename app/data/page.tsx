@@ -88,6 +88,8 @@ const DATA_PAGE_ENGLISH = {
   compareYourHouseholdResult: "Your Household Comparison Analysis",
 };
 
+import { HouseholdComparisonResponse, HouseholdAmenityMetric } from "@/types/census";
+
 export default function DataDashboardPage() {
   const { selectedStateCode, setSelectedStateCode, dict, language } = useApp();
   const { data: dt } = useGeminiTranslation(DATA_PAGE_ENGLISH, "data_page");
@@ -101,7 +103,7 @@ export default function DataDashboardPage() {
     latrineAccess: "within_premises",
     hasInternet: "yes",
   });
-  const [comparisonResult, setComparisonResult] = useState<any>(null);
+  const [comparisonResult, setComparisonResult] = useState<HouseholdComparisonResponse | null>(null);
 
   useEffect(() => {
     runComparison();
