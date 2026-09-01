@@ -3,7 +3,8 @@ import { enumerationService, IdorSecurityError } from "@/lib/services/enumeratio
 import { verifyToken } from "@/lib/services/auth-service";
 import { extractClientIp } from "@/lib/security/security-logger";
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { id } = params;
   const ip = extractClientIp(req.headers);
   const authHeader = req.headers.get("authorization");

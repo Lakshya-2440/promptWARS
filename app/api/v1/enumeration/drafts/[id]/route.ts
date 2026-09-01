@@ -5,7 +5,8 @@ import { checkRateLimit } from "@/lib/security/rate-limiter";
 import { PatchDraftSchema } from "@/lib/security/validation-schemas";
 import { extractClientIp, logSecurityEvent } from "@/lib/security/security-logger";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { id } = params;
   const ip = extractClientIp(req.headers);
   const authHeader = req.headers.get("authorization");
@@ -31,7 +32,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { id } = params;
   const ip = extractClientIp(req.headers);
   const authHeader = req.headers.get("authorization");
@@ -75,7 +77,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { id } = params;
   const ip = extractClientIp(req.headers);
   const authHeader = req.headers.get("authorization");

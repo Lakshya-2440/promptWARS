@@ -5,7 +5,8 @@ import { checkRateLimit } from "@/lib/security/rate-limiter";
 import { AdminUpdateStateSchema, VALID_STATE_CODES } from "@/lib/security/validation-schemas";
 import { extractClientIp, logSecurityEvent } from "@/lib/security/security-logger";
 
-export async function GET(req: NextRequest, { params }: { params: { stateCode: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ stateCode: string }> }) {
+  const params = await props.params;
   const { stateCode } = params;
   const state = scheduleService.getStateByCode(stateCode);
 
@@ -16,7 +17,8 @@ export async function GET(req: NextRequest, { params }: { params: { stateCode: s
   return NextResponse.json(state);
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { stateCode: string } }) {
+export async function PUT(req: NextRequest, props: { params: Promise<{ stateCode: string }> }) {
+  const params = await props.params;
   const { stateCode } = params;
   const ip = extractClientIp(req.headers);
 
